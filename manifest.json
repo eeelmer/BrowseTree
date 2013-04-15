@@ -1,0 +1,14 @@
+{
+  "name": "Browse Tree",
+  "version": "0.2",
+  "description": "A visual display of your browsing history",
+  "permissions": ["tabs"],
+  "background": {
+    "persistent": false,
+    "scripts": ["background.js"]
+  },
+  "browser_action": {
+    "default_title": "Browse Tree"
+  },
+  "manifest_version": 2
+}

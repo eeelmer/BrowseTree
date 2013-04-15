@@ -1,0 +1,31 @@
+body {
+    background-color: #222;
+    color:          #ccc;
+    font-family:    'helvetica neue', arial, sans-serif;
+    font-size:      14px;
+    line-height:    22px;
+    text-rendering: optimizeLegibility;
+}
+
+a {
+    color:              #333;
+    text-decoration:    none;
+}
+
+a:hover {
+    color:          grey;
+}
+
+li li {
+  margin-left: 20px;
+}
+
+.node {
+  stroke: #aaa;
+  stroke-width: 2px;
+}
+
+.link {
+  fill: none;
+  stroke: #aaa;
+}
