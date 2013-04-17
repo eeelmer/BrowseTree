@@ -1,3 +1,6 @@
+//
+// Setup event listener
+//
 chrome.tabs.onUpdated.addListener(function(tabId, updates, tab) {
 
   // Is the node for this tab already in the tree?
@@ -32,7 +35,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, updates, tab) {
     attachNode.getElementsByTagName('ul')[0].appendChild(newTabNode);
 
     // addNode(parentIdForTree, newTabNode.id); // TREE CODE
-    addNode(attachNode.id, newTabNode.id); // TREE CODE
+    addNode(attachNode.id, newTabNode.id, tab.title); // TREE CODE
   }
 });
 
@@ -76,10 +79,11 @@ function initialize() {
 //
 // TREE Node Addition
 //
-function addNode(parentId, newId) {
+function addNode(parentId, newId, newTitle) {
 
   // Create a new node
-  var newNode = {id: newId};
+  var newNode = {id: newId,
+                 title: newTitle};
 
   // Find the parent node
   var parentIndex = 0;
@@ -101,16 +105,31 @@ function addNode(parentId, newId) {
   nodeData = tree.nodes(root);
   linkData = tree.links(nodeData);
 
+  // Normalize for fixed-depth
+  nodeData.forEach(function(d) { d.y = d.depth * 180; });
+
   // Compute data join.
   nodes = nodes.data(nodeData, function(d) { return d.id; });
   links = links.data(linkData, function(d) { return d.source.id + "-" + d.target.id; });
 
-  // Add entering nodes in the parent’s old position.
-  nodes.enter().append("circle")
+  // Create and add nodes to hold and display data
+  var nodeGroup = nodes.enter().append("svg:g")
       .attr("class", "node")
-      .attr("r", 3)
-      .attr("cx", function(d) { return d.parent.previousX; })
-      .attr("cy", function(d) { return d.parent.previousY; });
+      .attr("transform", function(d) {
+        return "translate(" + d.parent.previousX + "," + d.parent.previousY + ")";
+      });
+
+  nodeGroup.append("circle")
+      .attr("fill", "whitesmoke")
+      .attr("r", 3);
+
+  // nodeGroup.append("text")
+  //     .attr("y", 20)
+  //     .attr("stroke-width", 0)
+  //     .attr("fill", "#ccc")
+  //     .text(function(d) {
+  //       return d.title;
+  //     });
 
   // Add entering links in the parent’s old position.
   links.enter().insert("path", ".node")
@@ -128,8 +147,11 @@ function addNode(parentId, newId) {
       .attr("d", diagonal);
 
   t.selectAll(".node")
-      .attr("cx", function(d) { return d.previousX = d.y; })
-      .attr("cy", function(d) { return d.previousY = d.x; });
+      .attr("transform", function(d) {
+        d.previousX = d.y;
+        d.previousY = d.x;
+        return "translate(" + d.y + "," + d.x + ")";
+      });
 }
 
 // Initialize the tree

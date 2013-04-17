@@ -2,8 +2,8 @@ body {
     background-color: #222;
     color:          #ccc;
     font-family:    'helvetica neue', arial, sans-serif;
-    font-size:      14px;
-    line-height:    22px;
+    font-size:      12px;
+    line-height:    18px;
     text-rendering: optimizeLegibility;
 }
 
@@ -16,16 +16,25 @@ a:hover {
     color:          grey;
 }
 
+h1 {
+    font-size:      18px;
+    font-weight:    bold;
+    margin-bottom:  18px;
+}
+
 li li {
   margin-left: 20px;
 }
 
+#wrapper {
+  margin: 20px;
+}
 .node {
-  stroke: #aaa;
-  stroke-width: 2px;
+  stroke: #555;
+  stroke-width: 1px;
 }
 
 .link {
   fill: none;
-  stroke: #aaa;
+  stroke: #555;
 }
