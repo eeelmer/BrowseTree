@@ -1,3 +1,37 @@
+// --------------------------------------------------------
+// SETUP
+
+$(window).ready(updateHeight);
+$(window).resize(updateHeight);
+
+document.addEventListener('DOMContentLoaded', function() {
+  initialize();
+});
+
+function updateHeight()
+{
+  // update the height of the svg container div
+  var windowHeight = $(window).height() - 96;
+  // var div = $('#tree');
+  // div.css('height', windowHeight);
+  $('#tree').attr('height', windowHeight);
+
+  // update the height of the root svg element
+  var adjustedHeight = $(window).height() - 96;
+  $("#tree svg").attr("height", adjustedHeight);
+
+  // update the size attribute of the tree for accurate layout
+  //    recalculations
+  tree.size([adjustedHeight, width]);
+
+  renderTree();
+}
+
+function updateWidth(maxDepth) {
+  $("#tree svg").attr("width", 180 * maxDepth + 100);
+}
+
+
 //
 // Setup event listener
 //
@@ -23,11 +57,11 @@ chrome.tabs.onUpdated.addListener(function(tabId, updates, tab) {
       // parentIdForTree = openerTabNode.id; // TREE CODE
     } else {
       // Parent Node was never created. Create it.
-      // Only occurs because of inconsistent Chrome API behavior.
+      // Occurs due to inconsistent Chrome API behavior.
     }
 
     // Create Node for the new tab and attach it to the attach Node.
-    var newTabNode = document.createElement('li')
+    var newTabNode = document.createElement('li');
     newTabNode.id = tab.id;
     newTabNode.innerText = tab.title;
     newTabNode.appendChild(document.createElement('ul'));
@@ -39,12 +73,12 @@ chrome.tabs.onUpdated.addListener(function(tabId, updates, tab) {
   }
 });
 
-//
+// --------------------------------------------------------
 // TREE Initialization
 //
 function initialize() {
-  width = 960,
-  height = 500;
+  width = 960;
+  height = 600;
 
   tree = d3.layout.tree()
     .size([height - 20, width - 20]);
@@ -76,10 +110,13 @@ function initialize() {
   duration = 750;
 }
 
-//
+// --------------------------------------------------------
 // TREE Node Addition
 //
 function addNode(parentId, newId, newTitle) {
+
+  // TESTING
+  tree.size([$(window).height() - 96, width - 20]);;
 
   // Create a new node
   var newNode = {id: newId,
@@ -101,12 +138,23 @@ function addNode(parentId, newId, newTitle) {
   if(parentNode.children) parentNode.children.push(newNode); else parentNode.children = [newNode];
   nodeData.push(newNode);
 
-  // Recalculate layouts with new node added
+  renderTree();
+}
+
+// update
+function renderTree() {
+  // Calculate Layout
   nodeData = tree.nodes(root);
   linkData = tree.links(nodeData);
 
-  // Normalize for fixed-depth
-  nodeData.forEach(function(d) { d.y = d.depth * 180; });
+  // Normalize for fixed-depth and find maximum depth
+  var maxDepth = 0;
+  nodeData.forEach(function(d) {
+    if (d.depth > maxDepth)
+      maxDepth = d.depth;
+    d.y = d.depth * 180;
+  });
+  updateWidth(maxDepth);
 
   // Compute data join.
   nodes = nodes.data(nodeData, function(d) { return d.id; });
@@ -122,14 +170,6 @@ function addNode(parentId, newId, newTitle) {
   nodeGroup.append("circle")
       .attr("fill", "whitesmoke")
       .attr("r", 3);
-
-  // nodeGroup.append("text")
-  //     .attr("y", 20)
-  //     .attr("stroke-width", 0)
-  //     .attr("fill", "#ccc")
-  //     .text(function(d) {
-  //       return d.title;
-  //     });
 
   // Add entering links in the parent’s old position.
   links.enter().insert("path", ".node")
@@ -153,9 +193,3 @@ function addNode(parentId, newId, newTitle) {
         return "translate(" + d.y + "," + d.x + ")";
       });
 }
-
-// Initialize the tree
-
-document.addEventListener('DOMContentLoaded', function() {
-  initialize();
-});
