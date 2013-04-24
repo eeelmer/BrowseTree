@@ -11,6 +11,7 @@ $(window).resize(function() {
 });
 document.addEventListener('DOMContentLoaded', function() {
   setup();
+  recalculateAndRender();
 });
 
 chrome.tabs.onCreated.addListener(function(tab) {
@@ -24,20 +25,22 @@ chrome.tabs.onCreated.addListener(function(tab) {
 // State and Setup
 //
 function setup() {
-  width = 960;
-  height = 600;
+
+  width = $(window).width();
+  height = $(window).height() - 96;
 
   tree = d3.layout.tree()
-    .size([$(window).height() - 96, width]);
-
+    .size([height, width]);
 
   // Set up initial node data and layout
   root = {};
+  root.id = 0;
+  root.title = "root";
+
   nodeData = tree.nodes(root);
   root.parent = root;
   root.previousX = root.y;
   root.previousY = root.x;
-  root.title = "root";
 
   diagonal = d3.svg.diagonal()
       .projection(function(d)
@@ -52,8 +55,6 @@ function setup() {
     .attr("transform", "translate(10, 0)");
 
   duration = 750;
-
-  recalculateAndRender();
 }
 
 
@@ -62,17 +63,18 @@ function setup() {
 //
 function updateHeights()
 {
+
+  var newHeight = $(window).height() - 96;
+
   // update the height of the svg container div
-  var windowHeight = $(window).height() - 96;
-  $('#tree').attr('height', windowHeight);
+  $('#tree').attr('height', newHeight);
 
   // update the height of the root svg element
-  var adjustedHeight = $(window).height() - 96;
-  $("#tree svg").attr("height", adjustedHeight);
+  $("#tree svg").attr("height", newHeight);
 
   // update the size attribute of the tree for accurate layout
   //    recalculations
-  tree.size([adjustedHeight, width]);
+  tree.size([newHeight, width]);
 }
 
 function updateWidth(maxDepth) {
@@ -100,36 +102,46 @@ chrome.tabs.onUpdated.addListener(function(tabId, updates, tab) {
 
   if(updates.status == 'complete') {
 
-    // Is the node for this tab already in the tree?
-    var currentNode = document.getElementById(tab.id);
+    // Does the nodeData for this tab already exist?
+    var dataExists = false;
+    for(var i = 0; i < nodeData.length; i++) {
+      if(nodeData[i].id  == tab.id) {
+        dataExists = true;
+        break;
+      }
+    }
+    if(!dataExists) {
+      addNodeData(tab.openerTabId, tab.id, tab.title);
+    } else {
+      updateNodeData(tab.id, tab.title)
+    }
 
-    if(currentNode == null) {
+    // Is there already a <li> for this tab?
+    var tabListItem = document.getElementById(tab.id);
 
-      addNode(tab.openerTabId, tab.id, tab.title); // TREE CODE
+    if(tabListItem == null) {
 
-      var attachNode = document.getElementById('log');
-      var openerTabNode = document.getElementById(tab.openerTabId);
+      var tabAttachList = document.getElementById('log');
+      var tabParentList = document.getElementById(tab.openerTabId);
 
-      if(openerTabNode != null) {
-        attachNode = openerTabNode;
+      if(tabParentList != null) {
+        tabAttachList = tabParentList;
       } else {
         // Parent Node was never created. Create it.
         // Occurs due to inconsistent Chrome API behavior.
       }
 
       // Create Node for the new tab and attach it to the attach Node.
-      var newTabNode = document.createElement('li');
-      newTabNode.id = tab.id;
+      var newTabListItem = document.createElement('li');
+      newTabListItem.id = tab.id;
       var titleSpan = document.createElement('span')
       titleSpan.innerText = tab.title
-      newTabNode.appendChild(titleSpan)
-      newTabNode.appendChild(document.createElement('ul'));
+      newTabListItem.appendChild(titleSpan)
+      newTabListItem.appendChild(document.createElement('ul'));
 
-      attachNode.getElementsByTagName('ul')[0].appendChild(newTabNode);
+      tabAttachList.getElementsByTagName('ul')[0].appendChild(newTabListItem);
     } else {
-      updateNode(tab.id, tab.title) // TREE CODE
-
-      currentNode.getElementsByTagName('span')[0].innerText = tab.title;
+      tabListItem.getElementsByTagName('span')[0].innerText = tab.title;
     }
   }
 });
@@ -138,20 +150,18 @@ chrome.tabs.onUpdated.addListener(function(tabId, updates, tab) {
 // --------------------------------------------------------
 // TREE Node Addition
 //
-function addNode(parentId, newId, newTitle) {
+function addNodeData(parentId, newId, newTitle) {
 
   // Create a new node
-  var newNode = {id: newId,
-                 title: newTitle};
+  var newNode = { id:    newId,
+                  title: newTitle };
 
   // Find the parent node
   var parentIndex = 0;
-  if(parentId != 0) { // WILL NEED TO ADJUST FOR null parentId
-    for(var i = 0; i < nodeData.length; i++) {
-      if(nodeData[i].id == parentId) {
-        parentIndex = i;
-        break;
-      }
+  for(var i = 0; i < nodeData.length; i++) {
+    if(nodeData[i].id == parentId) {
+      parentIndex = i;
+      break;
     }
   }
   var parentNode = nodeData[parentIndex];
@@ -167,7 +177,7 @@ function addNode(parentId, newId, newTitle) {
 // TREE Node Update
 //
 
-function updateNode(id, title) {
+function updateNodeData(id, title) {
   for(var i = 0; i < nodeData.length; i++) {
     if(nodeData[i].id == id) {
       nodeData[i].title = title;
