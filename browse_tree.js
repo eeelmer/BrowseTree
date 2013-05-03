@@ -1,24 +1,14 @@
 // --------------------------------------------------------
-// Handlers
-
-$(window).ready(function() {
-  updateHeights();
-  recalculateAndRender();
-});
-$(window).resize(function() {
-  updateHeights();
-  recalculateAndRender();
-});
+//
 document.addEventListener('DOMContentLoaded', function() {
   setup();
+  updateDimensions();
   recalculateAndRender();
 });
 
-chrome.tabs.onCreated.addListener(function(tab) {
-  // console.log('CREATE' + tab.index);
-  // console.log('TAB: ' + tab.id + ' OID: ' + tab.openerTabId);
-  // console.log('URL: ' + tab.url);
-  // console.log('TITLE: ' + tab.title);
+$(window).resize(function() {
+  updateDimensions();
+  recalculateAndRender();
 });
 
 // --------------------------------------------------------
@@ -26,81 +16,137 @@ chrome.tabs.onCreated.addListener(function(tab) {
 //
 function setup() {
 
-  width = $(window).width();
-  height = $(window).height() - 96;
+  width = 960;
+  height = 500;
+  node = null;
+  link = null;
+  nodeData = null;
 
-  tree = d3.layout.tree()
-    .size([height, width]);
+  radiusScale = d3.scale.linear()
+    .domain([1, 10])
+    .range([4, 15]);
 
-  // Set up initial node data and layout
-  root = {};
-  root.id = 0;
-  root.title = "root";
+  linkDistanceScale = d3.scale.linear()
+    .domain([1, 10])
+    .range([30, 100]);
 
-  nodeData = tree.nodes(root);
-  root.parent = root;
-  root.previousX = root.y;
-  root.previousY = root.x;
+  force = d3.layout.force()
+    .size([width, height])
+    .on("tick", tick)
+    .gravity(0.01)
+    .linkDistance(function(d) {
+      var maxWeight = Math.max(d.source.weight, d.target.weight);
+      return linkDistanceScale(maxWeight);
+    })
 
-  diagonal = d3.svg.diagonal()
-      .projection(function(d)
-        {
-          return [d.y, d.x];
-        });
-
-  svg = d3.select("#tree").append("svg")
+  vis = d3.select("#force-visualization").append("svg:svg")
     .attr("width", width)
-    .attr("height", height)
-    .append("g")
-    .attr("transform", "translate(10, 0)");
+    .attr("height", height);
 
-  duration = 750;
+  // Initialize a starter data set
+  rootDateTime = new Date().toString("MM/dd/yyyy HH:mm")
+
+  dataSet = { id: "root",
+              title: "the root",
+              dateTime: rootDateTime };
 }
-
 
 // --------------------------------------------------------
 // Modifiers
 //
-function updateHeights()
+function updateDimensions()
 {
+  height = $(window).height() - 66;
+  width = $(window).width() - 40;
 
-  var newHeight = $(window).height() - 96;
+  var forceVisualization = $("#force-visualization svg");
+  forceVisualization.attr("height", height);
+  forceVisualization.attr("width", width);
 
-  // update the height of the svg container div
-  $('#tree').attr('height', newHeight);
-
-  // update the height of the root svg element
-  $("#tree svg").attr("height", newHeight);
-
-  // update the size attribute of the tree for accurate layout
-  //    recalculations
-  tree.size([newHeight, width]);
+  force.size([width, height]);
 }
 
-function updateWidth(maxDepth) {
-  $("#tree svg").attr("width", maxDepth * 200 + 200);
+// --------------------------------------------------------
+// Calculations and Rendering
+//
+function recalculateAndRender() {
+
+  nodeData = flatten(dataSet)
+
+  // Calculate layout for links
+  links = d3.layout.tree().links(nodeData);
+
+  // Restart the force layout
+  force
+      .nodes(nodeData)
+      .links(links)
+      .start();
+
+  // Select links and calculate data join
+  link = vis.selectAll("line.link")
+      .data(links, function(d) { return d.target.id; });
+
+  // Enter any new links
+  link.enter().insert("svg:line", ".node")
+      .attr("class", "link")
+      .attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
+
+  // Exit any old links
+  link.exit().remove();
+
+  // Select nodes and calculate data join
+  node = vis.selectAll("circle.node")
+      .data(nodeData, function(d) { return d.id; })
+      .style("fill", color);
+
+  // Enter any new nodes
+  node.enter().append("svg:circle")
+      .attr("class", "node")
+      .attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; })
+      .style("fill", color)
+      .on("click", updateInfoWindow)
+      .call(force.drag);
+
+  // Update the nodes
+  node
+    .attr("r", function(d) {
+      return radiusScale(d.weight);
+    });
+
+  // Exit any old nodes.
+  node.exit().remove();
 }
 
-function toggleDisplay(infoWindow) {
-  currentOpacity = infoWindow.attr("opacity")
-  if(currentOpacity == 0)
-    infoWindow.attr("opacity", 1.0);
-  else
-    infoWindow.attr("opacity", 0);
-}
+function tick() {
+  link.attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
 
+  node.attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+}
 
 //
-// Setup event listener
+function color(d) {
+  if(d.id == "root") return "#444";
+  return d._children ? "#3182bd" : d.children ? "#c00" : "#c00";
+}
+
+//
+// Setup event listener for Node addition
 //
 chrome.tabs.onUpdated.addListener(function(tabId, updates, tab) {
 
-  // console.log('UPDATE: ' + updates.status)
-  // console.log('TAB: ' + tab.id + ' OID: ' + tab.openerTabId);
-  // console.log('URL: ' + tab.url);
-  // console.log('TITLE: ' + tab.title);
+  var devToolsRegex = /chrome-devtools:/
 
-  if(updates.status == 'complete') {
+  if(updates.status == 'complete' &&
+     tab.title != "New Tab" && tab.title != "Browse Tree" &&
+     !devToolsRegex.exec(tab.title) ) {
 
     // Does the nodeData for this tab already exist?
     var dataExists = false;
@@ -111,50 +157,25 @@ chrome.tabs.onUpdated.addListener(function(tabId, updates, tab) {
       }
     }
     if(!dataExists) {
-      addNodeData(tab.openerTabId, tab.id, tab.title);
+      addNodeData(tab.openerTabId, tab.id, tab.title, tab.url);
     } else {
-      updateNodeData(tab.id, tab.title)
-    }
-
-    // Is there already a <li> for this tab?
-    var tabListItem = document.getElementById(tab.id);
-
-    if(tabListItem == null) {
-
-      var tabAttachList = document.getElementById('log');
-      var tabParentList = document.getElementById(tab.openerTabId);
-
-      if(tabParentList != null) {
-        tabAttachList = tabParentList;
-      } else {
-        // Parent Node was never created. Create it.
-        // Occurs due to inconsistent Chrome API behavior.
-      }
-
-      // Create Node for the new tab and attach it to the attach Node.
-      var newTabListItem = document.createElement('li');
-      newTabListItem.id = tab.id;
-      var titleSpan = document.createElement('span')
-      titleSpan.innerText = tab.title
-      newTabListItem.appendChild(titleSpan)
-      newTabListItem.appendChild(document.createElement('ul'));
-
-      tabAttachList.getElementsByTagName('ul')[0].appendChild(newTabListItem);
-    } else {
-      tabListItem.getElementsByTagName('span')[0].innerText = tab.title;
+      updateNodeData(tab.id, tab.title, tab.url)
     }
   }
 });
 
-
 // --------------------------------------------------------
 // TREE Node Addition
 //
-function addNodeData(parentId, newId, newTitle) {
+function addNodeData(parentId, newId, newTitle, newUrl) {
+
+  var creationDateTime = new Date().toString("MM/dd/yyyy HH:mm")
 
   // Create a new node
   var newNode = { id:    newId,
-                  title: newTitle };
+                  title: newTitle,
+                  url:   newUrl,
+                  dateTime: creationDateTime };
 
   // Find the parent node
   var parentIndex = 0;
@@ -174,10 +195,10 @@ function addNodeData(parentId, newId, newTitle) {
 }
 
 // --------------------------------------------------------
-// TREE Node Update
+// Node Update
 //
 
-function updateNodeData(id, title) {
+function updateNodeData(id, title, url) {
   for(var i = 0; i < nodeData.length; i++) {
     if(nodeData[i].id == id) {
       nodeData[i].title = title;
@@ -187,75 +208,54 @@ function updateNodeData(id, title) {
   recalculateAndRender();
 }
 
+// --------------------------------------------------------
+// Info Window
+//
+function updateInfoWindow(d) {
+  var infoWindow = d3.select("#info-window");
+
+  var updateInfoWindowContents = function() {
+    infoWindow
+      .select("#node-id")
+      .text(d.id);
+    infoWindow
+      .select("#node-url")
+      .text(d.title)
+      .attr("href", d.url);
+    infoWindow
+      .select("#node-date-time")
+      .text(d.dateTime)
+  }
+
+  if ( infoWindow.classed("hidden") ) {
+    var xPosition = 10;
+    var yPosition = 20;
+
+    updateInfoWindowContents();
+
+    infoWindow.classed("hidden", false);
+  } else {
+    if ( d.id == d3.select("#node-id").text() ) {
+      infoWindow.classed("hidden", true);
+    } else {
+      updateInfoWindowContents();
+    }
+  }
+}
 
 // --------------------------------------------------------
-// TREE Calculations and Rendering
+// Returns a list of all nodes under the root in a flat array
 //
-function recalculateAndRender() {
-  // Calculate Layout
-  nodeData = tree.nodes(root);
-  linkData = tree.links(nodeData);
+function flatten(root) {
+  var nodes = [],
+      i = 0;
 
-  // Normalize for fixed-depth and find maximum depth
-  var maxDepth = 0;
-  nodeData.forEach(function(d) {
-    if (d.depth > maxDepth)
-      maxDepth = d.depth;
-    d.y = d.depth * 200;
-  });
-  updateWidth(maxDepth);
+  function recurse(node) {
+    nodes.push(node);
+    if (node.children) node.children.forEach(recurse);
+    if (!node.id) node.id = ++i;
+  }
 
-  // Selection
-  nodes = svg.selectAll(".node"),
-  links = svg.selectAll(".link");
-
-  // Compute data join.
-  nodes = nodes.data(nodeData, function(d) { return d.id; });
-  links = links.data(linkData, function(d) { return d.source.id + "-" + d.target.id; });
-
-  // Perform any needed updates
-  nodes.select("text")
-      .text(function(d) { return d.title; });
-
-  // Perform any needed additions
-  var nodeGroup = nodes.enter().append("g")
-      .attr("class", "node")
-      .attr("transform", function(d) {
-        return "translate(" + d.parent.previousX + "," + d.parent.previousY + ")";
-      });
-
-  nodeGroup.append("circle")
-      .attr("fill", "whitesmoke")
-      .attr("r", 4)
-      .on("click", function() {
-        toggleDisplay($(this).next());
-      });
-
-  nodeGroup.append("text")
-      .attr("stroke", "none")
-      .attr("y", 20)
-      .text(function(d) { return d.title; })
-      .attr("opacity", 0);
-
-  // Add entering links in the parent’s old position.
-  links.enter().insert("path", ".node")
-      .attr("class", "link")
-      .attr("d", function(d) {
-        var o = {x: d.source.previousY, y: d.source.previousX};
-        return diagonal({source: o, target: o});
-      });
-
-  // Transition nodes and links to their new positions.
-  var t = svg.transition()
-      .duration(duration);
-
-  t.selectAll(".link")
-      .attr("d", diagonal);
-
-  t.selectAll(".node")
-      .attr("transform", function(d) {
-        d.previousX = d.y;
-        d.previousY = d.x;
-        return "translate(" + d.y + "," + d.x + ")";
-      });
+  recurse(root);
+  return nodes;
 }

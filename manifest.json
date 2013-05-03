@@ -1,5 +1,5 @@
 {
-  "name": "Browse Tree",
+  "name": "Force Tree",
   "version": "0.2",
   "description": "A visual display of your browsing history",
   "permissions": ["tabs"],
@@ -8,7 +8,7 @@
     "scripts": ["background.js"]
   },
   "browser_action": {
-    "default_title": "Browse Tree"
+    "default_title": "Force Tree"
   },
   "manifest_version": 2
 }

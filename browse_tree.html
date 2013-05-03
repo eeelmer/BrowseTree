@@ -3,19 +3,25 @@
   <head>
     <title>Browse Tree</title>
     <link href="reset.css" rel="stylesheet" type="text/css">
-    <link href="style.css" rel="stylesheet" type="texdt/css">
+    <link href="style.css" rel="stylesheet" type="text/css">
     <script src="jquery-1.9.1.min.js"></script>
     <script src="d3.v3.min.js"></script>
+    <script src="date.js"></script>
     <script src="browse_tree.js"></script>
   </head>
 
   <body>
     <div id="wrapper">
-      <h1>browsetree</h1>
-      <div id="tree"></div>
-      <div id="log">
-        <ul></ul>
+      <h1>ForceTree</h1>
+      <div id="info-window" class="hidden">
+        <span id="node-id" class="hidden"></span>
+        <h2>Node Information</h2>
+        <h3>site title/link:</h3>
+        <p><a id="node-url" href=""></a></p>
+        <h3>visit date/time:</h3>
+        <p><span id="node-date-time"></span></p>
       </div>
+      <div id="force-visualization"></div>
     </div>
   </body>
 </html>

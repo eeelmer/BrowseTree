@@ -1,12 +1,13 @@
-# BrowseTree 0.3 - A Google Chrome extension
+# BrowseTree 0.6 - A Google Chrome extension
 
-Creates a Visual Tree Representation of a user's browsing activity.
+Creates a Visual Graph Representation of a user's browsing activity.
 
 ## Installation instructions
 The extension is not yet on the Chrome Webstore.<br>
 [Instructions](http://developer.chrome.com/extensions/getstarted.html#unpacked "Installation Instructions")
 
 ## Version Information
++ 0.6 - Switch Visualization to Force Layout. Add Information Window
 + 0.3 - Add dynamic sizing of visual tree area and static depth
 + 0.2 - Add d3.js and the tree representation of browsing activity
 + 0.1 - Display users browsing activity using ul's and li's
@@ -24,9 +25,8 @@ The extension is not yet on the Chrome Webstore.<br>
 ## Upcoming Features/Changes
 + Improve the code
 + Improve the visualization
-+ Add display of title, url, and other relevant information to nodes in the visual tree
-+ Move/Convert/Remove list representation into the visual tree area
-+ Add multiroot support
++ Add statistical data on browsing session
++ Add visualization of browsing session statistical data
 + Add more default filtering
 + Add user filtering capability
 + Add ability to output data as JSON from various nodes in the tree
